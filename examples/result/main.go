@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gustavodias/fgp/result"
+	"github.com/charmingruby/fgp/result"
 )
 
 func main() {

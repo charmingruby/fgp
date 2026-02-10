@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gustavodias/fgp/task"
+	"github.com/charmingruby/fgp/task"
 )
 
 func main() {

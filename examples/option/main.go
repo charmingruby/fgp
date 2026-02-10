@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gustavodias/fgp/option"
-	"github.com/gustavodias/fgp/result"
+	"github.com/charmingruby/fgp/option"
+	"github.com/charmingruby/fgp/result"
 )
 
 func main() {

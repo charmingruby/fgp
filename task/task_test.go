@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gustavodias/fgp/option"
-	"github.com/gustavodias/fgp/result"
-	"github.com/gustavodias/fgp/task"
+	"github.com/charmingruby/fgp/option"
+	"github.com/charmingruby/fgp/result"
+	"github.com/charmingruby/fgp/task"
 )
 
 func TestRetryEventuallySucceeds(t *testing.T) {

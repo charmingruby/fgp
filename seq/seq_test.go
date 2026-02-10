@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/gustavodias/fgp/seq"
+	"github.com/charmingruby/fgp/seq"
 )
 
 func TestMapFilterReduce(t *testing.T) {

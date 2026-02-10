@@ -5,7 +5,7 @@ import (
 	"testing"
 	"testing/quick"
 
-	"github.com/gustavodias/fgp/result"
+	"github.com/charmingruby/fgp/result"
 )
 
 func TestResultFunctorLaws(t *testing.T) {

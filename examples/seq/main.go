@@ -4,7 +4,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/gustavodias/fgp/seq"
+	"github.com/charmingruby/fgp/seq"
 )
 
 func main() {

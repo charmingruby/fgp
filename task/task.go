@@ -14,9 +14,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gustavodias/fgp/internal/timeutil"
-	"github.com/gustavodias/fgp/option"
-	"github.com/gustavodias/fgp/result"
+	"github.com/charmingruby/fgp/internal/timeutil"
+	"github.com/charmingruby/fgp/option"
+	"github.com/charmingruby/fgp/result"
 )
 
 // Task represents a computation that can be executed with a context.

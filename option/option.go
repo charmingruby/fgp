@@ -10,7 +10,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gustavodias/fgp/result"
+	"github.com/charmingruby/fgp/result"
 )
 
 // Option represents presence or absence of a value of type T. The zero value is

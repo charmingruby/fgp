@@ -5,7 +5,7 @@ import (
 	"testing"
 	"testing/quick"
 
-	"github.com/gustavodias/fgp/option"
+	"github.com/charmingruby/fgp/option"
 )
 
 func TestSomeNilBehavior(t *testing.T) {

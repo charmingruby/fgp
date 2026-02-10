@@ -3,7 +3,7 @@ package fp_test
 import (
 	"testing"
 
-	"github.com/gustavodias/fgp/fp"
+	"github.com/charmingruby/fgp/fp"
 )
 
 func TestPipeComposeCurry(t *testing.T) {
