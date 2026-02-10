@@ -6,19 +6,19 @@ release:
     owner: charmingruby
     name: fgp
   prerelease: auto
+
 archives:
 - id: source
   format: tar.gz
   files:
-
   - go.mod
   - go.sum
   - Makefile
+  - fp/**
   - option/**
   - result/**
   - seq/**
   - task/**
-  - fp/**
   - internal/**
 
 source:
@@ -28,7 +28,8 @@ checksum:
   name_template: "checksums.txt"
 
 sboms:
-- artifacts: [ source ]
+- artifacts:
+  - source
 
 changelog:
   use: github
