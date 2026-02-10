@@ -1,22 +1,48 @@
 // Package result provides a success/error abstraction similar to Go's (T, error).
+//
+// Example:
+//
+//	res := result.Ok("done")
+//	value, err := res.Unwrap()
+//	_ = value
 package result
 
 import "errors"
 
 // Result represents the outcome of a computation that may succeed with a value
 // or fail with an error. It never panics except in Unsafe helpers.
+//
+// Example:
+//
+//	res := result.Ok("token")
+//	value, err := res.Unwrap()
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	fmt.Println(value)
 type Result[T any] struct {
 	value T
 	err   error
 }
 
 // Ok constructs a successful Result carrying value.
+//
+// Example:
+//
+//	res := result.Ok(200)
+//	fmt.Println(res.IsOk()) // true
 func Ok[T any](value T) Result[T] {
 	return Result[T]{value: value}
 }
 
 // Err constructs a failed Result. Passing a nil error automatically converts it
 // into a descriptive placeholder to avoid silent successes.
+//
+// Example:
+//
+//	res := result.Err[int](errors.New("boom"))
+//	_, err := res.Unwrap()
+//	fmt.Println(err)
 func Err[T any](err error) Result[T] {
 	if err == nil {
 		err = errors.New("result: nil error")
@@ -25,6 +51,12 @@ func Err[T any](err error) Result[T] {
 }
 
 // FromTuple converts a standard Go (value, error) pair to a Result.
+//
+// Example:
+//
+//	value, err := repo.Load()
+//	res := result.FromTuple(value, err)
+//	return res
 func FromTuple[T any](value T, err error) Result[T] {
 	if err != nil {
 		return Err[T](err)
@@ -33,21 +65,45 @@ func FromTuple[T any](value T, err error) Result[T] {
 }
 
 // IsOk reports whether the Result represents success.
+//
+// Example:
+//
+//	if res.IsOk() {
+//		fmt.Println("success")
+//	}
 func (r Result[T]) IsOk() bool {
 	return r.err == nil
 }
 
 // IsErr reports whether the Result represents failure.
+//
+// Example:
+//
+//	if res.IsErr() {
+//		log.Println(res.Err())
+//	}
 func (r Result[T]) IsErr() bool {
 	return r.err != nil
 }
 
 // Err returns the stored error, if any.
+//
+// Example:
+//
+//	if err := res.Err(); err != nil {
+//		return err
+//	}
 func (r Result[T]) Err() error {
 	return r.err
 }
 
 // UnsafeUnwrap returns the underlying value or panics if the Result is an error.
+//
+// Example:
+//
+//	func mustConfig(res result.Result[Config]) Config {
+//		return res.UnsafeUnwrap()
+//	}
 func (r Result[T]) UnsafeUnwrap() T {
 	if r.err != nil {
 		panic(r.err)
@@ -56,17 +112,32 @@ func (r Result[T]) UnsafeUnwrap() T {
 }
 
 // Unwrap returns the value and error, mirroring standard Go semantics.
+//
+// Example:
+//
+//	value, err := res.Unwrap()
+//	if err != nil {
+//		return err
+//	}
 func (r Result[T]) Unwrap() (T, error) {
 	return r.value, r.err
 }
 
 // ToTuple exposes the underlying (value, error) pair, matching idiomatic Go
 // callers that expect tuple returns.
+//
+// Example:
+//
+//	value, err := res.ToTuple()
 func (r Result[T]) ToTuple() (T, error) {
 	return r.value, r.err
 }
 
 // UnwrapOr returns the value when ok, otherwise returns fallback.
+//
+// Example:
+//
+//	code := res.UnwrapOr(http.StatusInternalServerError)
 func (r Result[T]) UnwrapOr(fallback T) T {
 	if r.err == nil {
 		return r.value
@@ -75,6 +146,12 @@ func (r Result[T]) UnwrapOr(fallback T) T {
 }
 
 // UnwrapOrElse lazily computes a fallback using fn when the Result is an error.
+//
+// Example:
+//
+//	value := res.UnwrapOrElse(func(err error) string {
+//		return "error: " + err.Error()
+//	})
 func (r Result[T]) UnwrapOrElse(fn func(error) T) T {
 	if r.err == nil {
 		return r.value
@@ -83,6 +160,10 @@ func (r Result[T]) UnwrapOrElse(fn func(error) T) T {
 }
 
 // Map transforms the value on success.
+//
+// Example:
+//
+//	length := result.Map(res, func(s string) int { return len(s) })
 func Map[T any, U any](r Result[T], fn func(T) U) Result[U] {
 	if r.err == nil {
 		return Ok(fn(r.value))
@@ -91,6 +172,10 @@ func Map[T any, U any](r Result[T], fn func(T) U) Result[U] {
 }
 
 // FlatMap chains computations, propagating the first error.
+//
+// Example:
+//
+//	res := result.FlatMap(loadUser(), fetchProfile)
 func FlatMap[T any, U any](r Result[T], fn func(T) Result[U]) Result[U] {
 	if r.err == nil {
 		return fn(r.value)
@@ -99,6 +184,12 @@ func FlatMap[T any, U any](r Result[T], fn func(T) Result[U]) Result[U] {
 }
 
 // MapErr transforms the stored error when present.
+//
+// Example:
+//
+//	res := result.MapErr(load(), func(err error) error {
+//		return fmt.Errorf("wrap: %w", err)
+//	})
 func MapErr[T any](r Result[T], fn func(error) error) Result[T] {
 	if fn == nil {
 		return r
@@ -111,6 +202,12 @@ func MapErr[T any](r Result[T], fn func(error) error) Result[T] {
 
 // Recover converts an error Result into success using fn while keeping success
 // values untouched.
+//
+// Example:
+//
+//	res := result.Recover(loadConfig(), func(err error) Config {
+//		return defaultConfig
+//	})
 func Recover[T any](r Result[T], fn func(error) T) Result[T] {
 	if r.err == nil {
 		return r
@@ -119,6 +216,13 @@ func Recover[T any](r Result[T], fn func(error) T) Result[T] {
 }
 
 // Fold collapses the Result into a single value.
+//
+// Example:
+//
+//	message := result.Fold(res,
+//		func(err error) string { return "failed: " + err.Error() },
+//		func(val string) string { return "ok: " + val },
+//	)
 func Fold[T any, U any](r Result[T], onErr func(error) U, onOk func(T) U) U {
 	if r.err == nil {
 		return onOk(r.value)
@@ -127,6 +231,12 @@ func Fold[T any, U any](r Result[T], onErr func(error) U, onOk func(T) U) U {
 }
 
 // Tap executes fn when the Result is Ok and returns the original Result.
+//
+// Example:
+//
+//	_ = result.Tap(saveUser(), func(u User) {
+//		metrics.Count("user_saved")
+//	})
 func Tap[T any](r Result[T], fn func(T)) Result[T] {
 	if r.err == nil {
 		fn(r.value)
@@ -135,6 +245,12 @@ func Tap[T any](r Result[T], fn func(T)) Result[T] {
 }
 
 // TapErr executes fn when the Result is Err and returns the original Result.
+//
+// Example:
+//
+//	_ = result.TapErr(load(), func(err error) {
+//		log.Println("load failed", err)
+//	})
 func TapErr[T any](r Result[T], fn func(error)) Result[T] {
 	if r.err != nil {
 		fn(r.err)
@@ -143,6 +259,10 @@ func TapErr[T any](r Result[T], fn func(error)) Result[T] {
 }
 
 // Zip2 combines two results into one containing a pair of values.
+//
+// Example:
+//
+//	combined := result.Zip2(loadUser(), loadProfile())
 func Zip2[A any, B any](ra Result[A], rb Result[B]) Result[Tuple2[A, B]] {
 	if ra.err != nil {
 		return Err[Tuple2[A, B]](ra.err)
@@ -154,6 +274,10 @@ func Zip2[A any, B any](ra Result[A], rb Result[B]) Result[Tuple2[A, B]] {
 }
 
 // Zip3 combines three results into one containing a triple of values.
+//
+// Example:
+//
+//	combined := result.Zip3(loadUser(), loadProfile(), loadSettings())
 func Zip3[A any, B any, C any](ra Result[A], rb Result[B], rc Result[C]) Result[Tuple3[A, B, C]] {
 	if ra.err != nil {
 		return Err[Tuple3[A, B, C]](ra.err)
@@ -169,6 +293,10 @@ func Zip3[A any, B any, C any](ra Result[A], rb Result[B], rc Result[C]) Result[
 
 // Sequence converts a slice of Results into a Result containing a slice of
 // values, failing fast on the first error.
+//
+// Example:
+//
+//	res := result.Sequence([]result.Result[int]{loadA(), loadB()})
 func Sequence[T any](results []Result[T]) Result[[]T] {
 	values := make([]T, 0, len(results))
 	for _, r := range results {
@@ -181,6 +309,12 @@ func Sequence[T any](results []Result[T]) Result[[]T] {
 }
 
 // Traverse maps input values to Results and sequences them.
+//
+// Example:
+//
+//	res := result.Traverse(ids, func(id int) result.Result[User] {
+//		return loadUser(id)
+//	})
 func Traverse[A any, B any](items []A, fn func(A) Result[B]) Result[[]B] {
 	values := make([]B, 0, len(items))
 	for _, item := range items {
@@ -194,12 +328,20 @@ func Traverse[A any, B any](items []A, fn func(A) Result[B]) Result[[]B] {
 }
 
 // Tuple2 represents a pair of values.
+//
+// Example:
+//
+//	p := result.Tuple2[int, string]{First: 1, Second: "a"}
 type Tuple2[A any, B any] struct {
 	First  A
 	Second B
 }
 
 // Tuple3 represents three values.
+//
+// Example:
+//
+//	t := result.Tuple3[int, string, bool]{First: 1, Second: "a", Third: true}
 type Tuple3[A any, B any, C any] struct {
 	First  A
 	Second B

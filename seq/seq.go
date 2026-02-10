@@ -2,6 +2,11 @@ package seq
 
 // Map transforms each element using fn and returns a new slice with the same
 // length as input.
+//
+// Example:
+//
+//	doubled := Map([]int{1, 2, 3}, func(n int) int { return n * 2 })
+//	// doubled == []int{2, 4, 6}
 func Map[A any, B any](in []A, fn func(A) B) []B {
 	if len(in) == 0 {
 		return []B{}
@@ -15,6 +20,10 @@ func Map[A any, B any](in []A, fn func(A) B) []B {
 
 // Filter keeps values satisfying predicate. The returned slice shares no
 // backing array with the input to preserve immutability.
+//
+// Example:
+//
+//	eve := Filter([]int{1, 2, 3, 4}, func(n int) bool { return n%2 == 0 })
 func Filter[T any](in []T, predicate func(T) bool) []T {
 	if len(in) == 0 {
 		return []T{}
@@ -29,6 +38,12 @@ func Filter[T any](in []T, predicate func(T) bool) []T {
 }
 
 // FlatMap applies fn to each element and concatenates the resulting slices.
+//
+// Example:
+//
+//	letters := FlatMap([]string{"ab", "cd"}, func(s string) []string {
+//		return strings.Split(s, "")
+//	})
 func FlatMap[A any, B any](in []A, fn func(A) []B) []B {
 	if len(in) == 0 {
 		return []B{}
@@ -49,6 +64,12 @@ func FlatMap[A any, B any](in []A, fn func(A) []B) []B {
 }
 
 // FoldLeft reduces the slice from left to right using the provided accumulator.
+//
+// Example:
+//
+//	sum := FoldLeft([]int{1, 2, 3}, 0, func(acc, n int) int {
+//		return acc + n
+//	})
 func FoldLeft[A any, B any](in []A, init B, fn func(B, A) B) B {
 	acc := init
 	for _, v := range in {
@@ -58,6 +79,15 @@ func FoldLeft[A any, B any](in []A, init B, fn func(B, A) B) B {
 }
 
 // Reduce applies fn across elements, returning false when slice empty.
+//
+// Example:
+//
+//	max, ok := Reduce([]int{5, 4, 9}, func(a, b int) int {
+//		if a > b {
+//			return a
+//		}
+//		return b
+//	})
 func Reduce[T any](in []T, fn func(T, T) T) (T, bool) {
 	if len(in) == 0 {
 		var zero T
@@ -71,6 +101,10 @@ func Reduce[T any](in []T, fn func(T, T) T) (T, bool) {
 }
 
 // Find returns the first element satisfying predicate.
+//
+// Example:
+//
+//	value, ok := Find(users, func(u User) bool { return u.ID == id })
 func Find[T any](in []T, predicate func(T) bool) (T, bool) {
 	for _, v := range in {
 		if predicate(v) {
@@ -82,6 +116,10 @@ func Find[T any](in []T, predicate func(T) bool) (T, bool) {
 }
 
 // Any reports whether any element satisfies predicate.
+//
+// Example:
+//
+//	hasAdmin := Any(users, func(u User) bool { return u.Role == "admin" })
 func Any[T any](in []T, predicate func(T) bool) bool {
 	for _, v := range in {
 		if predicate(v) {
@@ -92,6 +130,10 @@ func Any[T any](in []T, predicate func(T) bool) bool {
 }
 
 // All reports whether all elements satisfy predicate.
+//
+// Example:
+//
+//	allPositive := All(nums, func(n int) bool { return n > 0 })
 func All[T any](in []T, predicate func(T) bool) bool {
 	for _, v := range in {
 		if !predicate(v) {
@@ -102,6 +144,10 @@ func All[T any](in []T, predicate func(T) bool) bool {
 }
 
 // GroupBy groups elements by the key returned from keySelector.
+//
+// Example:
+//
+//	byStatus := GroupBy(tasks, func(t Task) string { return t.Status })
 func GroupBy[T any, K comparable](in []T, keySelector func(T) K) map[K][]T {
 	groups := make(map[K][]T)
 	for _, v := range in {
@@ -112,6 +158,10 @@ func GroupBy[T any, K comparable](in []T, keySelector func(T) K) map[K][]T {
 }
 
 // DistinctBy removes duplicates determined by keySelector, preserving order.
+//
+// Example:
+//
+//	unique := DistinctBy(users, func(u User) int { return u.ID })
 func DistinctBy[T any, K comparable](in []T, keySelector func(T) K) []T {
 	if len(in) == 0 {
 		return []T{}
@@ -130,6 +180,12 @@ func DistinctBy[T any, K comparable](in []T, keySelector func(T) K) []T {
 }
 
 // Partition splits the slice into two slices based on predicate outcome.
+//
+// Example:
+//
+//	valid, invalid := Partition(users, func(u User) bool {
+//		return u.Active
+//	})
 func Partition[T any](in []T, predicate func(T) bool) ([]T, []T) {
 	if len(in) == 0 {
 		return []T{}, []T{}
@@ -147,6 +203,10 @@ func Partition[T any](in []T, predicate func(T) bool) ([]T, []T) {
 }
 
 // Zip combines two slices into a slice of pairs up to the shortest length.
+//
+// Example:
+//
+//	pairs := Zip([]string{"a", "b"}, []int{1, 2})
 func Zip[A any, B any](a []A, b []B) []Pair[A, B] {
 	limit := len(a)
 	if len(b) < limit {
@@ -160,6 +220,10 @@ func Zip[A any, B any](a []A, b []B) []Pair[A, B] {
 }
 
 // Pair represents two related values.
+//
+// Example:
+//
+//	p := Pair[string, int]{First: "a", Second: 1}
 type Pair[A any, B any] struct {
 	First  A
 	Second B

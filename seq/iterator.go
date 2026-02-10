@@ -1,12 +1,27 @@
 // Package seq offers eager and lazy functional helpers for Go slices.
+//
+// Example:
+//
+//	values := seq.Map([]int{1, 2, 3}, func(n int) int { return n * 2 })
 package seq
 
 // Iterator is a lazy, pull-based iterator.
+//
+// Example:
+//
+//	it := Iterator[int]{next: func() (int, bool) { return 0, false }}
 type Iterator[T any] struct {
 	next func() (T, bool)
 }
 
 // Next yields the next value. When ok is false, iteration is complete.
+//
+// Example:
+//
+//	value, ok := it.Next()
+//	if !ok {
+//		return
+//	}
 func (it Iterator[T]) Next() (T, bool) {
 	if it.next == nil {
 		var zero T
@@ -16,6 +31,11 @@ func (it Iterator[T]) Next() (T, bool) {
 }
 
 // FromSlice creates an iterator over the provided slice without copying.
+//
+// Example:
+//
+//	it := FromSlice([]int{1, 2})
+//	val, _ := it.Next()
 func FromSlice[T any](values []T) Iterator[T] {
 	idx := 0
 	return Iterator[T]{
@@ -32,6 +52,10 @@ func FromSlice[T any](values []T) Iterator[T] {
 }
 
 // MapIter lazily transforms iterator values.
+//
+// Example:
+//
+//	squared := MapIter(it, func(n int) int { return n * n })
 func MapIter[A any, B any](it Iterator[A], fn func(A) B) Iterator[B] {
 	return Iterator[B]{
 		next: func() (B, bool) {
@@ -46,6 +70,10 @@ func MapIter[A any, B any](it Iterator[A], fn func(A) B) Iterator[B] {
 }
 
 // FilterIter keeps values satisfying predicate.
+//
+// Example:
+//
+//	even := FilterIter(it, func(n int) bool { return n%2 == 0 })
 func FilterIter[T any](it Iterator[T], predicate func(T) bool) Iterator[T] {
 	return Iterator[T]{
 		next: func() (T, bool) {
@@ -64,6 +92,10 @@ func FilterIter[T any](it Iterator[T], predicate func(T) bool) Iterator[T] {
 }
 
 // Take returns an iterator that yields at most n elements.
+//
+// Example:
+//
+//	firstTwo := Take(it, 2)
 func Take[T any](it Iterator[T], n int) Iterator[T] {
 	if n <= 0 {
 		return Iterator[T]{}
@@ -87,6 +119,10 @@ func Take[T any](it Iterator[T], n int) Iterator[T] {
 }
 
 // Drop skips the first n elements.
+//
+// Example:
+//
+//	skipPrefix := Drop(it, 5)
 func Drop[T any](it Iterator[T], n int) Iterator[T] {
 	if n <= 0 {
 		return it
@@ -109,6 +145,10 @@ func Drop[T any](it Iterator[T], n int) Iterator[T] {
 }
 
 // ToSlice exhausts the iterator and collects its values.
+//
+// Example:
+//
+//	values := ToSlice(it)
 func ToSlice[T any](it Iterator[T]) []T {
 	var result []T
 	for {
