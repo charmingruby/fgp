@@ -1,0 +1,207 @@
+// Package result provides a success/error abstraction similar to Go's (T, error).
+package result
+
+import "errors"
+
+// Result represents the outcome of a computation that may succeed with a value
+// or fail with an error. It never panics except in Unsafe helpers.
+type Result[T any] struct {
+	value T
+	err   error
+}
+
+// Ok constructs a successful Result carrying value.
+func Ok[T any](value T) Result[T] {
+	return Result[T]{value: value}
+}
+
+// Err constructs a failed Result. Passing a nil error automatically converts it
+// into a descriptive placeholder to avoid silent successes.
+func Err[T any](err error) Result[T] {
+	if err == nil {
+		err = errors.New("result: nil error")
+	}
+	return Result[T]{err: err}
+}
+
+// FromTuple converts a standard Go (value, error) pair to a Result.
+func FromTuple[T any](value T, err error) Result[T] {
+	if err != nil {
+		return Err[T](err)
+	}
+	return Ok(value)
+}
+
+// IsOk reports whether the Result represents success.
+func (r Result[T]) IsOk() bool {
+	return r.err == nil
+}
+
+// IsErr reports whether the Result represents failure.
+func (r Result[T]) IsErr() bool {
+	return r.err != nil
+}
+
+// Err returns the stored error, if any.
+func (r Result[T]) Err() error {
+	return r.err
+}
+
+// UnsafeUnwrap returns the underlying value or panics if the Result is an error.
+func (r Result[T]) UnsafeUnwrap() T {
+	if r.err != nil {
+		panic(r.err)
+	}
+	return r.value
+}
+
+// Unwrap returns the value and error, mirroring standard Go semantics.
+func (r Result[T]) Unwrap() (T, error) {
+	return r.value, r.err
+}
+
+// ToTuple exposes the underlying (value, error) pair, matching idiomatic Go
+// callers that expect tuple returns.
+func (r Result[T]) ToTuple() (T, error) {
+	return r.value, r.err
+}
+
+// UnwrapOr returns the value when ok, otherwise returns fallback.
+func (r Result[T]) UnwrapOr(fallback T) T {
+	if r.err == nil {
+		return r.value
+	}
+	return fallback
+}
+
+// UnwrapOrElse lazily computes a fallback using fn when the Result is an error.
+func (r Result[T]) UnwrapOrElse(fn func(error) T) T {
+	if r.err == nil {
+		return r.value
+	}
+	return fn(r.err)
+}
+
+// Map transforms the value on success.
+func Map[T any, U any](r Result[T], fn func(T) U) Result[U] {
+	if r.err == nil {
+		return Ok(fn(r.value))
+	}
+	return Err[U](r.err)
+}
+
+// FlatMap chains computations, propagating the first error.
+func FlatMap[T any, U any](r Result[T], fn func(T) Result[U]) Result[U] {
+	if r.err == nil {
+		return fn(r.value)
+	}
+	return Err[U](r.err)
+}
+
+// MapErr transforms the stored error when present.
+func MapErr[T any](r Result[T], fn func(error) error) Result[T] {
+	if fn == nil {
+		return r
+	}
+	if r.err == nil {
+		return r
+	}
+	return Err[T](fn(r.err))
+}
+
+// Recover converts an error Result into success using fn while keeping success
+// values untouched.
+func Recover[T any](r Result[T], fn func(error) T) Result[T] {
+	if r.err == nil {
+		return r
+	}
+	return Ok(fn(r.err))
+}
+
+// Fold collapses the Result into a single value.
+func Fold[T any, U any](r Result[T], onErr func(error) U, onOk func(T) U) U {
+	if r.err == nil {
+		return onOk(r.value)
+	}
+	return onErr(r.err)
+}
+
+// Tap executes fn when the Result is Ok and returns the original Result.
+func Tap[T any](r Result[T], fn func(T)) Result[T] {
+	if r.err == nil {
+		fn(r.value)
+	}
+	return r
+}
+
+// TapErr executes fn when the Result is Err and returns the original Result.
+func TapErr[T any](r Result[T], fn func(error)) Result[T] {
+	if r.err != nil {
+		fn(r.err)
+	}
+	return r
+}
+
+// Zip2 combines two results into one containing a pair of values.
+func Zip2[A any, B any](ra Result[A], rb Result[B]) Result[Tuple2[A, B]] {
+	if ra.err != nil {
+		return Err[Tuple2[A, B]](ra.err)
+	}
+	if rb.err != nil {
+		return Err[Tuple2[A, B]](rb.err)
+	}
+	return Ok(Tuple2[A, B]{First: ra.value, Second: rb.value})
+}
+
+// Zip3 combines three results into one containing a triple of values.
+func Zip3[A any, B any, C any](ra Result[A], rb Result[B], rc Result[C]) Result[Tuple3[A, B, C]] {
+	if ra.err != nil {
+		return Err[Tuple3[A, B, C]](ra.err)
+	}
+	if rb.err != nil {
+		return Err[Tuple3[A, B, C]](rb.err)
+	}
+	if rc.err != nil {
+		return Err[Tuple3[A, B, C]](rc.err)
+	}
+	return Ok(Tuple3[A, B, C]{First: ra.value, Second: rb.value, Third: rc.value})
+}
+
+// Sequence converts a slice of Results into a Result containing a slice of
+// values, failing fast on the first error.
+func Sequence[T any](results []Result[T]) Result[[]T] {
+	values := make([]T, 0, len(results))
+	for _, r := range results {
+		if r.err != nil {
+			return Err[[]T](r.err)
+		}
+		values = append(values, r.value)
+	}
+	return Ok(values)
+}
+
+// Traverse maps input values to Results and sequences them.
+func Traverse[A any, B any](items []A, fn func(A) Result[B]) Result[[]B] {
+	values := make([]B, 0, len(items))
+	for _, item := range items {
+		res := fn(item)
+		if res.err != nil {
+			return Err[[]B](res.err)
+		}
+		values = append(values, res.value)
+	}
+	return Ok(values)
+}
+
+// Tuple2 represents a pair of values.
+type Tuple2[A any, B any] struct {
+	First  A
+	Second B
+}
+
+// Tuple3 represents three values.
+type Tuple3[A any, B any, C any] struct {
+	First  A
+	Second B
+	Third  C
+}

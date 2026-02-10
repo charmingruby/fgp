@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: 1.25.0
+        cache: false
+    - name: Install dependencies
+      run: go mod tidy
+    - name: Gofmt Check
+      run: make fmt
+    - name: Go Vet
+      run: make vet
+    - name: Go Test
+      run: make test
+    - name: Go Test (Race)
+      run: make race
+    - name: Lint
+      uses: golangci/golangci-lint-action@v8
+      with:
+        version: v2.6.1
