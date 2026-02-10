@@ -5,6 +5,9 @@
 //	res := result.Ok("done")
 //	value, err := res.Unwrap()
 //	_ = value
+//
+// Result combinators uphold Functor/Monad laws (see laws_result_test.go) to make
+// transformations predictable even across retries and RPC boundaries.
 package result
 
 import "errors"
@@ -183,6 +186,23 @@ func FlatMap[T any, U any](r Result[T], fn func(T) Result[U]) Result[U] {
 	return Err[U](r.err)
 }
 
+// FlatMapErr chains error handlers, allowing recovery paths that still return Results.
+//
+// Example:
+//
+//	recovered := result.FlatMapErr(load(), func(err error) result.Result[Config] {
+//		return loadFromFallback()
+//	})
+func FlatMapErr[T any](r Result[T], fn func(error) Result[T]) Result[T] {
+	if r.err == nil {
+		return r
+	}
+	if fn == nil {
+		return r
+	}
+	return fn(r.err)
+}
+
 // MapErr transforms the stored error when present.
 //
 // Example:
@@ -256,6 +276,46 @@ func TapErr[T any](r Result[T], fn func(error)) Result[T] {
 		fn(r.err)
 	}
 	return r
+}
+
+// Collect gathers the successful values from the provided Results, ignoring failures.
+// The returned slice never shares the backing array with inputs.
+//
+// Example:
+//
+//	values := result.Collect([]result.Result[int]{result.Ok(1), result.Err[int](err)})
+func Collect[T any](results []Result[T]) []T {
+	if len(results) == 0 {
+		return []T{}
+	}
+	values := make([]T, 0, len(results))
+	for _, r := range results {
+		if r.err == nil {
+			values = append(values, r.value)
+		}
+	}
+	return values
+}
+
+// PartitionResults splits the input slice into successful values and collected errors.
+//
+// Example:
+//
+//	vals, errs := result.PartitionResults(results)
+func PartitionResults[T any](results []Result[T]) ([]T, []error) {
+	if len(results) == 0 {
+		return []T{}, []error{}
+	}
+	values := make([]T, 0, len(results))
+	errs := make([]error, 0, len(results))
+	for _, r := range results {
+		if r.err == nil {
+			values = append(values, r.value)
+			continue
+		}
+		errs = append(errs, r.err)
+	}
+	return values, errs
 }
 
 // Zip2 combines two results into one containing a pair of values.

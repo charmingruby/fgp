@@ -219,6 +219,92 @@ func Zip[A any, B any](a []A, b []B) []Pair[A, B] {
 	return result
 }
 
+// Chunk splits the slice into consecutive sub-slices of size chunkSize. The
+// last chunk may be smaller. Each chunk is copied to preserve immutability.
+//
+// Example:
+//
+//	chunks := Chunk([]int{1,2,3,4}, 2) // [[1,2],[3,4]]
+func Chunk[T any](in []T, chunkSize int) [][]T {
+	if chunkSize <= 0 || len(in) == 0 {
+		return [][]T{}
+	}
+	chunks := make([][]T, 0, (len(in)+chunkSize-1)/chunkSize)
+	for i := 0; i < len(in); i += chunkSize {
+		end := i + chunkSize
+		if end > len(in) {
+			end = len(in)
+		}
+		chunk := make([]T, end-i)
+		copy(chunk, in[i:end])
+		chunks = append(chunks, chunk)
+	}
+	return chunks
+}
+
+// Window returns a sliding window of size windowSize across the slice. Each
+// window is copied to avoid sharing memory with input.
+//
+// Example:
+//
+//	windows := Window([]int{1,2,3}, 2) // [[1,2],[2,3]]
+func Window[T any](in []T, windowSize int) [][]T {
+	if windowSize <= 0 || len(in) == 0 || windowSize > len(in) {
+		return [][]T{}
+	}
+	windows := make([][]T, 0, len(in)-windowSize+1)
+	for i := 0; i <= len(in)-windowSize; i++ {
+		window := make([]T, windowSize)
+		copy(window, in[i:i+windowSize])
+		windows = append(windows, window)
+	}
+	return windows
+}
+
+// ScanLeft returns the running accumulation values, including the initial seed
+// as the first element of the returned slice.
+//
+// Example:
+//
+//	sums := ScanLeft([]int{1,2,3}, 0, func(acc, v int) int { return acc + v })
+//	// sums == []int{0, 1, 3, 6}
+func ScanLeft[A any, B any](in []A, init B, fn func(B, A) B) []B {
+	result := make([]B, len(in)+1)
+	result[0] = init
+	acc := init
+	for i, v := range in {
+		acc = fn(acc, v)
+		result[i+1] = acc
+	}
+	return result
+}
+
+// Collect fuses filter + map by executing fn for each element and appending the
+// produced value when ok is true.
+//
+// Example:
+//
+//	evenSquares := Collect([]int{1,2,3}, func(v int) (int, bool) {
+//		if v%2 != 0 {
+//			return 0, false
+//		}
+//		return v * v, true
+//	})
+func Collect[A any, B any](in []A, fn func(A) (B, bool)) []B {
+	if len(in) == 0 {
+		return []B{}
+	}
+	out := make([]B, 0, len(in))
+	for _, v := range in {
+		mapped, ok := fn(v)
+		if !ok {
+			continue
+		}
+		out = append(out, mapped)
+	}
+	return out
+}
+
 // Pair represents two related values.
 //
 // Example:

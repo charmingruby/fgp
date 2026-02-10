@@ -4,6 +4,9 @@
 //
 //	opt := option.Some("token")
 //	value := opt.GetOrElse("missing")
+//
+// Option's Map/FlatMap/Traverse helpers obey the Functor and Monad laws validated
+// in laws_option_test.go so they compose predictably in production pipelines.
 package option
 
 import (
@@ -264,6 +267,81 @@ func FlatMap[T any, U any](o Option[T], fn func(T) Option[U]) Option[U] {
 		return fn(o.value)
 	}
 	return None[U]()
+}
+
+// Tap executes fn when the Option is Some and always returns the original Option.
+//
+// Example:
+//
+//	opt := Tap(option.Some(user), func(u User) { metrics.Count("user_loaded") })
+func Tap[T any](o Option[T], fn func(T)) Option[T] {
+	if o.ok {
+		fn(o.value)
+	}
+	return o
+}
+
+// Pair combines two related values.
+//
+// Example:
+//
+//	p := Pair[int, string]{First: 1, Second: "a"}
+type Pair[A any, B any] struct {
+	First  A
+	Second B
+}
+
+// Zip combines two Options into one that is Some when both inputs are Some.
+//
+// Example:
+//
+//	combined := Zip(firstNameOpt, lastNameOpt)
+func Zip[A any, B any](a Option[A], b Option[B]) Option[Pair[A, B]] {
+	if a.ok && b.ok {
+		return Some(Pair[A, B]{First: a.value, Second: b.value})
+	}
+	return None[Pair[A, B]]()
+}
+
+// Traverse maps items to Options using fn and collapses them into an Option of
+// collected values. It short-circuits on the first None.
+//
+// Example:
+//
+//	users := Traverse(ids, func(id int) option.Option[User] { ... })
+func Traverse[A any, B any](items []A, fn func(A) Option[B]) Option[[]B] {
+	if len(items) == 0 {
+		return Some([]B{})
+	}
+	values := make([]B, 0, len(items))
+	for _, item := range items {
+		res := fn(item)
+		if !res.ok {
+			return None[[]B]()
+		}
+		values = append(values, res.value)
+	}
+	return Some(values)
+}
+
+// Sequence converts a slice of Options into an Option containing all values when
+// every element is Some. It fails fast on the first None.
+//
+// Example:
+//
+//	combined := Sequence([]option.Option[int]{option.Some(1), option.Some(2)})
+func Sequence[T any](items []Option[T]) Option[[]T] {
+	if len(items) == 0 {
+		return Some([]T{})
+	}
+	values := make([]T, 0, len(items))
+	for _, item := range items {
+		if !item.ok {
+			return None[[]T]()
+		}
+		values = append(values, item.value)
+	}
+	return Some(values)
 }
 
 // ToResult converts an Option into a Result, producing errFactory() when the
