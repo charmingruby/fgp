@@ -1,24 +1,10 @@
-version: "2"
+version: 2
 
-formatters:
-  enable:
-    - goimports
-    - golines
-  settings:
-    goimports:
-      local-prefixes:
-        - github.com/gustavodias/fgp
-    golines:
-      max-len: 120
-  exclusions:
-    warn-unused: true
-    generated: strict
-    paths:
-      - ".*\\.my\\.go$"
+run:
+  timeout: 5m
 
 linters:
   enable:
-    - asasalint
     - asciicheck
     - bidichk
     - bodyclose
@@ -30,7 +16,6 @@ linters:
     - errname
     - errorlint
     - exhaustive
-    - exptostd
     - fatcontext
     - forbidigo
     - funcorder
@@ -88,7 +73,6 @@ issues:
   exclude-rules:
     - path: '(.+)_test\.go'
       linters:
-        - asasalint
         - funlen
     - path: .*\.go
       linters:
@@ -102,7 +86,7 @@ issues:
 linters-settings:
   cyclop:
     max-complexity: 30
-    package-average: 10.0
+    package-average: 10
 
   errcheck:
     check-type-assertions: true
@@ -157,8 +141,9 @@ linters-settings:
 
   govet:
     enable-all: true
-    shadow:
-      strict: false
+    settings:
+      shadow:
+        strict: false
 
   inamedparam:
     skip-single-param: true
@@ -185,7 +170,6 @@ linters-settings:
     allow-no-explanation:
       - funlen
       - gocognit
-      - golines
     require-explanation: true
     require-specific: true
 
