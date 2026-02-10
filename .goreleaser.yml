@@ -12,6 +12,7 @@ release:
 archives:
 - id: source
   meta: true
+  name_template: "{{ .ProjectName }}_{{ .Version }}_source"
   formats:
   - tar.gz
   files:
