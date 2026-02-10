@@ -17,7 +17,6 @@ archives:
   - tar.gz
   files:
   - go.mod
-  - go.sum
   - Makefile
   - fp/**
   - option/**
