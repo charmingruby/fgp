@@ -6,11 +6,15 @@
 //		return repo.Load(ctx)
 //	})
 //	nameTask := task.Map(getUser, func(u User) string { return u.Name })
+//
+// Task.Map and Task.FlatMap honor functor/monad laws so composed effects remain
+// lawful (see laws_task_test.go). All blocking obeys context cancellation.
 package task
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -18,6 +22,9 @@ import (
 	"github.com/charmingruby/fgp/option"
 	"github.com/charmingruby/fgp/result"
 )
+
+var errRaceNoTasks = errors.New("task: race requires at least one task")
+var errParMapNilFn = errors.New("task: nil function for ParMapN")
 
 // Task represents a computation that can be executed with a context.
 //
@@ -312,6 +319,193 @@ func SequencePar[T any](tasks []Task[T]) Task[[]T] {
 	return TraverseParN(tasks, len(tasks), func(t Task[T]) Task[T] {
 		return t
 	})
+}
+
+// Race runs tasks concurrently and returns the first completed result, canceling
+// the remaining tasks. When all tasks fail it returns the last error observed.
+//
+// Example:
+//
+//	winner := Race(taskA, taskB)
+func Race[T any](tasks ...Task[T]) Task[T] {
+	return func(ctx context.Context) (T, error) {
+		if len(tasks) == 0 {
+			var zero T
+			return zero, errRaceNoTasks
+		}
+		if err := ctx.Err(); err != nil {
+			var zero T
+			return zero, err
+		}
+		raceCtx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		outcomes := make(chan raceOutcome[T], len(tasks))
+		startRaceWorkers(raceCtx, tasks, outcomes)
+		return awaitRaceResult(raceCtx, cancel, outcomes, len(tasks))
+	}
+}
+
+type raceOutcome[T any] struct {
+	value T
+	err   error
+}
+
+func startRaceWorkers[T any](ctx context.Context, tasks []Task[T], outcomes chan<- raceOutcome[T]) {
+	for _, task := range tasks {
+		go func(current Task[T]) {
+			value, err := current(ctx)
+			select {
+			case outcomes <- raceOutcome[T]{value: value, err: err}:
+			default:
+			}
+		}(task)
+	}
+}
+
+func awaitRaceResult[T any](
+	ctx context.Context,
+	cancel context.CancelFunc,
+	outcomes <-chan raceOutcome[T],
+	total int,
+) (T, error) {
+	var zero T
+	var firstErr error
+	for range total {
+		select {
+		case <-ctx.Done():
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return zero, ctxErr
+			}
+		case outcome := <-outcomes:
+			if outcome.err == nil {
+				cancel()
+				return outcome.value, nil
+			}
+			if firstErr == nil {
+				firstErr = outcome.err
+			}
+		}
+	}
+	if firstErr != nil {
+		return zero, firstErr
+	}
+	return zero, ctx.Err()
+}
+
+// ParZip executes two tasks concurrently and returns their results preserving
+// ordering. If either fails, the other is canceled.
+//
+// Example:
+//
+//	combined := ParZip(loadUser, loadProfile)
+func ParZip[A any, B any](left Task[A], right Task[B]) Task[result.Tuple2[A, B]] {
+	return func(ctx context.Context) (result.Tuple2[A, B], error) {
+		var zero result.Tuple2[A, B]
+		if err := ctx.Err(); err != nil {
+			return zero, err
+		}
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		errCh := make(chan error, 2)
+		var wg sync.WaitGroup
+		var leftVal A
+		var rightVal B
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			value, err := left(ctx)
+			if err != nil {
+				select {
+				case errCh <- err:
+				default:
+				}
+				cancel()
+				return
+			}
+			leftVal = value
+		}()
+		go func() {
+			defer wg.Done()
+			value, err := right(ctx)
+			if err != nil {
+				select {
+				case errCh <- err:
+				default:
+				}
+				cancel()
+				return
+			}
+			rightVal = value
+		}()
+		wg.Wait()
+		if err := pullError(errCh); err != nil {
+			return zero, err
+		}
+		if err := ctx.Err(); err != nil {
+			return zero, err
+		}
+		return result.Tuple2[A, B]{First: leftVal, Second: rightVal}, nil
+	}
+}
+
+// Both executes two tasks concurrently and returns their results as a tuple.
+//
+// Example:
+//
+//	both := Both(taskA, taskB)
+func Both[A any, B any](left Task[A], right Task[B]) Task[result.Tuple2[A, B]] {
+	return ParZip(left, right)
+}
+
+// ParMapN applies fn to each element concurrently with at most n workers.
+//
+// Example:
+//
+//	parallel := ParMapN(items, 4, func(ctx context.Context, item Item) (Output, error) { ... })
+func ParMapN[A any, B any](items []A, n int, fn func(context.Context, A) (B, error)) Task[[]B] {
+	if fn == nil {
+		return func(context.Context) ([]B, error) {
+			return nil, errParMapNilFn
+		}
+	}
+	return TraverseParN(items, n, func(item A) Task[B] {
+		return func(ctx context.Context) (B, error) {
+			return fn(ctx, item)
+		}
+	})
+}
+
+// Delay pauses for duration d or until the context is canceled.
+//
+// Example:
+//
+//	wait := Delay(100 * time.Millisecond)
+func Delay(d time.Duration) Task[struct{}] {
+	return func(ctx context.Context) (struct{}, error) {
+		var out struct{}
+		if !timeutil.Sleep(ctx, d) {
+			return out, ctx.Err()
+		}
+		return out, nil
+	}
+}
+
+// Attempt executes t and converts panics into errors to avoid crashing callers.
+//
+// Example:
+//
+//	safe := Attempt(mightPanic)
+func Attempt[T any](t Task[T]) Task[T] {
+	return func(ctx context.Context) (value T, err error) { //nolint:nonamedreturns // defer needs access to named results to clear panic output
+		defer func() {
+			if r := recover(); r != nil {
+				err = fmt.Errorf("task: panic recovered: %v", r)
+				var zero T
+				value = zero
+			}
+		}()
+		return t(ctx)
+	}
 }
 
 // TraversePar executes fn for each input element concurrently.

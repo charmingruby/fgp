@@ -144,6 +144,119 @@ func Drop[T any](it Iterator[T], n int) Iterator[T] {
 	}
 }
 
+// Range constructs an iterator that yields integers from start (inclusive) to
+// end (exclusive). When start >= end the iterator is empty.
+//
+// Example:
+//
+//	it := Range(0, 3) // yields 0,1,2
+func Range(start, end int) Iterator[int] {
+	if start >= end {
+		return Iterator[int]{}
+	}
+	current := start
+	return Iterator[int]{
+		next: func() (int, bool) {
+			if current >= end {
+				return 0, false
+			}
+			value := current
+			current++
+			return value, true
+		},
+	}
+}
+
+// Repeat creates an infinite iterator repeating value. Consumers should limit
+// it with Take/TakeWhile to avoid unbounded loops.
+//
+// Example:
+//
+//	it := Repeat("retry")
+func Repeat[T any](value T) Iterator[T] {
+	return Iterator[T]{
+		next: func() (T, bool) {
+			return value, true
+		},
+	}
+}
+
+// Iterate repeatedly applies fn to state starting from seed.
+//
+// Example:
+//
+//	it := Iterate(1, func(n int) int { return n * 2 })
+func Iterate[T any](seed T, fn func(T) T) Iterator[T] {
+	state := seed
+	return Iterator[T]{
+		next: func() (T, bool) {
+			value := state
+			state = fn(state)
+			return value, true
+		},
+	}
+}
+
+// TakeWhile yields elements while predicate returns true and stops immediately
+// once predicate fails.
+//
+// Example:
+//
+//	pluck := TakeWhile(it, func(v int) bool { return v < 10 })
+func TakeWhile[T any](it Iterator[T], predicate func(T) bool) Iterator[T] {
+	if predicate == nil {
+		return Iterator[T]{}
+	}
+	stopped := false
+	return Iterator[T]{
+		next: func() (T, bool) {
+			if stopped {
+				var zero T
+				return zero, false
+			}
+			value, ok := it.Next()
+			if !ok {
+				var zero T
+				return zero, false
+			}
+			if !predicate(value) {
+				stopped = true
+				var zero T
+				return zero, false
+			}
+			return value, true
+		},
+	}
+}
+
+// DropWhile skips elements until predicate returns false, then yields all
+// remaining values including the first that failed predicate.
+//
+// Example:
+//
+//	trimmed := DropWhile(it, func(v int) bool { return v == 0 })
+func DropWhile[T any](it Iterator[T], predicate func(T) bool) Iterator[T] {
+	skipped := false
+	return Iterator[T]{
+		next: func() (T, bool) {
+			if !skipped {
+				for {
+					value, ok := it.Next()
+					if !ok {
+						var zero T
+						return zero, false
+					}
+					if predicate == nil || !predicate(value) {
+						skipped = true
+						return value, true
+					}
+				}
+			}
+			return it.Next()
+		},
+	}
+}
+
 // ToSlice exhausts the iterator and collects its values.
 //
 // Example:
