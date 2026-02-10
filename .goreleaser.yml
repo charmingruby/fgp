@@ -1,5 +1,7 @@
 version: 2
-builds: []
+builds:
+- id: skip-binaries
+  skip: true
 
 release:
   github:
@@ -9,7 +11,9 @@ release:
 
 archives:
 - id: source
-  format: tar.gz
+  meta: true
+  formats:
+  - tar.gz
   files:
   - go.mod
   - go.sum
