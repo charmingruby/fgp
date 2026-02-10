@@ -149,12 +149,6 @@ linters:
     gocognit:
       min-complexity: 20
 
-    gocritic:
-      captLocal:
-        paramsOnly: false
-      underef:
-        skipRecvDeref: false
-
     govet:
       enable-all: true
       settings:
