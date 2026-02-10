@@ -33,6 +33,7 @@ checksum:
 
 sboms:
 - artifacts: source
+  cmd: builtin:syft
 
 changelog:
   use: github
