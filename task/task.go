@@ -157,7 +157,7 @@ func Timeout[T any](t Task[T], d time.Duration) Task[T] {
 }
 
 // RetryConfig defines retry behavior for Retry.
-type RetryConfig struct {
+type RetryConfig struct { //nolint:govet // fieldalignment: keep numeric fields grouped for readability
 	Attempts    int
 	Delay       time.Duration
 	Backoff     func(attempt int, err error) time.Duration
@@ -165,7 +165,7 @@ type RetryConfig struct {
 }
 
 // Retry re-executes the task according to cfg when it fails.
-func Retry[T any](t Task[T], cfg RetryConfig) Task[T] { //nolint:cyclop // branching handles retry policies
+func Retry[T any](t Task[T], cfg RetryConfig) Task[T] { //nolint:gocognit // branching handles retry policies
 	return func(ctx context.Context) (T, error) {
 		attempts := cfg.Attempts
 		if attempts <= 0 {
@@ -288,7 +288,7 @@ func TraverseParN[A any, B any](items []A, n int, fn func(A) Task[B]) Task[[]B] 
 	}
 }
 
-type workItem[T any] struct {
+type workItem[T any] struct { //nolint:govet // fieldalignment: generic payload size dominates; keep simple layout
 	index int
 	item  T
 }
