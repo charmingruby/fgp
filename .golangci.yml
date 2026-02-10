@@ -1,10 +1,24 @@
 version: "2"
 
-run:
-  timeout: 5m
+formatters:
+  enable:
+    - goimports
+    - golines
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/gustavodias/fgp
+    golines:
+      max-len: 120
+  exclusions:
+    warn-unused: true
+    generated: strict
+    paths:
+      - ".*\\.my\\.go$"
 
 linters:
   enable:
+    - asasalint
     - asciicheck
     - bidichk
     - bodyclose
@@ -16,6 +30,7 @@ linters:
     - errname
     - errorlint
     - exhaustive
+    - exptostd
     - fatcontext
     - forbidigo
     - funcorder
@@ -69,24 +84,10 @@ linters:
     - wastedassign
     - whitespace
 
-issues:
-  exclude-rules:
-    - path: '(.+)_test\.go'
-      linters:
-        - funlen
-    - path: .*\.go
-      linters:
-        - govet
-      text: "shadow: declaration of"
-    - path: '.*/main\.go$'
-      linters:
-        - revive
-        - funlen
-
 linters-settings:
   cyclop:
     max-complexity: 30
-    package-average: 10
+    package-average: 10.0
 
   errcheck:
     check-type-assertions: true
@@ -134,10 +135,11 @@ linters-settings:
     min-complexity: 20
 
   gocritic:
-    captLocal:
-      paramsOnly: false
-    underef:
-      skipRecvDeref: false
+    settings:
+      captLocal:
+        paramsOnly: false
+      underef:
+        skipRecvDeref: false
 
   govet:
     enable-all: true
@@ -170,6 +172,7 @@ linters-settings:
     allow-no-explanation:
       - funlen
       - gocognit
+      - golines
     require-explanation: true
     require-specific: true
 
@@ -179,3 +182,21 @@ linters-settings:
   reassign:
     patterns:
       - ".*"
+
+  rowserrcheck:
+    packages:
+      - github.com/jmoiron/sqlx
+  exclusions:
+    rules:
+      - path: '(.+)_test\\.go'
+        linters:
+          - asasalint
+          - funlen
+      - path: .*\\.go
+        linters:
+          - govet
+        text: "shadow: declaration of"
+      - path: '.*/main\\.go$'
+        linters:
+          - revive
+          - funlen
