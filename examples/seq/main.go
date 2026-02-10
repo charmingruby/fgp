@@ -1,4 +1,5 @@
-package seq_test
+// Package main demonstra iteradores lazy de seq.
+package main
 
 import (
 	"fmt"
@@ -6,12 +7,10 @@ import (
 	"github.com/gustavodias/fgp/seq"
 )
 
-func ExampleIterator_pipeline() {
+func main() {
 	values := []int{1, 2, 3, 4}
 	it := seq.FromSlice(values)
 	it = seq.MapIter(it, func(v int) int { return v * 2 })
 	it = seq.Take(it, 3)
-	fmt.Println(seq.ToSlice(it))
-	// Output:
-	// [2 4 6]
+	fmt.Println(seq.ToSlice(it)) //nolint:forbidigo // exemplos precisam imprimir
 }
