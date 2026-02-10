@@ -28,8 +28,7 @@ checksum:
   name_template: "checksums.txt"
 
 sboms:
-- artifacts:
-  - source
+- artifacts: source
 
 changelog:
   use: github
