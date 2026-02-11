@@ -17,6 +17,15 @@ func Identity[T any](v T) T {
 	return v
 }
 
+// Unit represents the absence of a meaningful value. It mirrors the functional
+// programming concept of a zero-value type so APIs can signal "nothing here"
+// without resorting to struct{} literals everywhere.
+type Unit struct{}
+
+// UnitValue is the canonical zero-value instance for Unit. While Unit is
+// already empty, having a named value makes return sites more expressive.
+var UnitValue Unit
+
 // Constant returns a function that always returns v.
 //
 // Example:
