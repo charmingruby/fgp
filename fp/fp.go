@@ -38,6 +38,28 @@ func Constant[T any](v T) func() T {
 	}
 }
 
+// Maybe selects which function to evaluate based on cond, mirroring a ternary
+// operator while preserving laziness so only the chosen branch runs.
+//
+// Example:
+//
+//	value := Maybe(isProd,
+//		func() string { return "https://api.prod" },
+//		func() string { return "https://api.dev" },
+//	)
+func Maybe[T any](cond bool, whenTrue func() T, whenFalse func() T) T {
+	if cond {
+		if whenTrue == nil {
+			panic("fp: Maybe true branch is nil")
+		}
+		return whenTrue()
+	}
+	if whenFalse == nil {
+		panic("fp: Maybe false branch is nil")
+	}
+	return whenFalse()
+}
+
 // Pipe applies a sequence of functions to value. All functions must accept and
 // return the same type.
 //
